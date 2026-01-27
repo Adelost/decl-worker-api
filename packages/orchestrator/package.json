@@ -1,0 +1,24 @@
+{
+  "name": "@worker-ai-dsl/orchestrator",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx watch src/server.ts",
+    "start": "node dist/server.js",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@worker-ai-dsl/core": "workspace:*",
+    "@fastify/cors": "^9.0.0",
+    "bullmq": "^5.0.0",
+    "fastify": "^4.25.0",
+    "ioredis": "^5.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.0"
+  }
+}

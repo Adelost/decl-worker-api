@@ -1,0 +1,119 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "worker-ai-dsl-tasks"
+version = "0.1.0"
+description = "Shared Python tasks for worker-ai-dsl"
+requires-python = ">=3.11"
+dependencies = [
+    "openai>=1.0.0",
+    "httpx",
+    "numpy",
+]
+
+[project.optional-dependencies]
+# Core audio dependencies
+audio = [
+    "faster-whisper>=1.0.0",
+    "openai-whisper",
+    "pyannote.audio>=3.0.0",
+    "pydub",
+]
+
+# Vision/detection dependencies
+vision = [
+    "torch>=2.0.0",
+    "torchvision",
+    "ultralytics>=8.0.0",
+    "transformers>=4.35.0",
+    "timm",
+    "opencv-python-headless",
+    "pillow",
+    "insightface>=0.7.0",
+    "onnxruntime-gpu",
+]
+
+# TTS dependencies
+tts = [
+    "elevenlabs>=1.0.0",
+    "torch>=2.0.0",
+    "torchaudio",
+]
+
+# Search/embedding dependencies
+search = [
+    "sentence-transformers>=2.2.0",
+    "scikit-learn",
+]
+
+# Image generation dependencies
+image = [
+    "torch>=2.0.0",
+    "diffusers>=0.24.0",
+    "accelerate>=0.25.0",
+    "safetensors",
+    "xformers",
+]
+
+# Process/download dependencies
+process = [
+    "yt-dlp",
+    "feedparser",
+    "pydub",
+]
+
+# Video analysis dependencies
+video = [
+    "opencv-python-headless",
+    "scenedetect",
+]
+
+# GPU dependencies (all GPU tasks)
+gpu = [
+    "torch>=2.0.0",
+    "torchvision",
+    "torchaudio",
+    "transformers>=4.35.0",
+    "diffusers>=0.24.0",
+    "accelerate>=0.25.0",
+    "safetensors",
+    "xformers",
+    "ultralytics>=8.0.0",
+    "faster-whisper>=1.0.0",
+    "sentence-transformers>=2.2.0",
+    "insightface>=0.7.0",
+    "timm",
+]
+
+# All dependencies
+all = [
+    "worker-ai-dsl-tasks[audio,vision,tts,search,image,process,video]",
+]
+
+# Development dependencies
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "ruff",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["shared/tasks/tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"
+markers = [
+    "gpu: marks tests as requiring GPU",
+    "slow: marks tests as slow running",
+    "api: marks tests requiring API keys",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]
+ignore = ["E501"]

@@ -1,0 +1,27 @@
+{
+  "name": "worker-ai-dsl",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "pnpm -r build",
+    "dev": "pnpm --filter @worker-ai-dsl/orchestrator dev",
+    "typecheck": "pnpm -r typecheck",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "vitest run --config vitest.e2e.config.ts",
+    "test:all": "pnpm test && pnpm test:e2e",
+    "gen:types": "python3 scripts/gen_types.py",
+    "gen:schemas": "python3 scripts/gen_schemas.py",
+    "gen": "pnpm gen:types && pnpm gen:schemas",
+    "check:types": "python3 scripts/check_types.py"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "typescript": "^5.3.0",
+    "vitest": "^2.0.0"
+  }
+}

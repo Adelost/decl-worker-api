@@ -1,0 +1,2 @@
+# Modal backend requirements
+modal>=0.56.0

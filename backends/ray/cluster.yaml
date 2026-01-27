@@ -1,0 +1,57 @@
+# Ray cluster configuration for worker-ai-dsl
+# Use with: ray up cluster.yaml
+
+cluster_name: worker-ai-dsl
+
+# Cloud provider configuration (example for AWS)
+provider:
+  type: aws
+  region: us-west-2
+  availability_zone: us-west-2a
+
+# Authentication
+auth:
+  ssh_user: ubuntu
+
+# Head node configuration
+head_node:
+  InstanceType: m5.xlarge
+  ImageId: ami-0a243dbef00e96192  # Deep Learning AMI
+
+# Worker node configuration
+available_node_types:
+  cpu_worker:
+    node_config:
+      InstanceType: m5.xlarge
+    min_workers: 0
+    max_workers: 5
+    resources: {}
+
+  gpu_worker:
+    node_config:
+      InstanceType: g4dn.xlarge
+    min_workers: 0
+    max_workers: 3
+    resources:
+      GPU: 1
+
+# Files to upload
+file_mounts:
+  "/home/ubuntu/worker-ai-dsl/shared": "./../../shared"
+  "/home/ubuntu/worker-ai-dsl/backends/ray": "./"
+
+# Setup commands
+setup_commands:
+  - pip install -U pip
+  - pip install "ray[serve]>=2.9.0" fastapi pydantic openai
+  - pip install torch transformers diffusers accelerate
+
+# Commands to run on head node start
+head_start_ray_commands:
+  - ray stop
+  - ray start --head --port=6379 --dashboard-host=0.0.0.0
+
+# Commands to run on worker node start
+worker_start_ray_commands:
+  - ray stop
+  - ray start --address=$RAY_HEAD_IP:6379

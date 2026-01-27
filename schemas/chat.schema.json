@@ -1,0 +1,85 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "chat.schema.json",
+  "title": "Chat Types",
+  "description": "Standard chat types for all LLM providers",
+
+  "definitions": {
+    "Message": {
+      "type": "object",
+      "description": "A single message in a conversation",
+      "required": ["role", "content"],
+      "properties": {
+        "role": {
+          "type": "string",
+          "enum": ["user", "assistant", "system"]
+        },
+        "content": {
+          "type": "string"
+        },
+        "image_url": {
+          "type": ["string", "null"],
+          "description": "Optional image URL for multimodal"
+        }
+      }
+    },
+
+    "ChatPayload": {
+      "type": "object",
+      "description": "Standard payload for ALL chat providers (OpenAI, Qwen, Llama, etc)",
+      "required": ["messages"],
+      "properties": {
+        "messages": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/Message" }
+        },
+        "temperature": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 2,
+          "default": 0.7
+        },
+        "max_tokens": {
+          "type": ["integer", "null"],
+          "minimum": 1
+        },
+        "top_p": {
+          "type": ["number", "null"],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "stop": {
+          "type": ["array", "null"],
+          "items": { "type": "string" }
+        }
+      }
+    },
+
+    "ChatResponse": {
+      "type": "object",
+      "description": "Standard response from all chat providers",
+      "required": ["content", "model"],
+      "properties": {
+        "content": {
+          "type": "string"
+        },
+        "model": {
+          "type": "string"
+        },
+        "usage": {
+          "type": ["object", "null"],
+          "properties": {
+            "prompt_tokens": { "type": "integer" },
+            "completion_tokens": { "type": "integer" },
+            "total_tokens": { "type": "integer" }
+          }
+        },
+        "is_partial": {
+          "type": "boolean",
+          "default": false,
+          "description": "True for streaming partial responses"
+        }
+      }
+    }
+  }
+}
