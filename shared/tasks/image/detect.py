@@ -10,7 +10,7 @@ from ..decorator import task
 
 @task(
     name="yolo.detect",
-    category="see",
+    category="image",
     capabilities=["detect", "objects"],
     gpu="T4",
     timeout=300,
@@ -51,7 +51,7 @@ def detect(
 
 @task(
     name="yolo.segment",
-    category="see",
+    category="image",
     capabilities=["segment", "instances"],
     gpu="T4",
     timeout=300,
@@ -91,7 +91,7 @@ def segment(
 
 @task(
     name="yolo.pose",
-    category="see",
+    category="image",
     capabilities=["pose", "keypoints"],
     gpu="T4",
     timeout=300,
@@ -136,7 +136,7 @@ def pose(
 
 @task(
     name="yolo.detect_batch",
-    category="see",
+    category="image",
     capabilities=["detect", "objects", "batch"],
     gpu="T4",
     timeout=600,
@@ -175,7 +175,7 @@ def detect_batch(
 
 @task(
     name="yolo.track",
-    category="see",
+    category="image",
     capabilities=["track", "objects", "video"],
     gpu="T4",
     timeout=600,

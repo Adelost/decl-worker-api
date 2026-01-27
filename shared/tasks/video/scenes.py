@@ -9,7 +9,7 @@ from ..decorator import task
 
 @task(
     name="video.detect_scenes",
-    category="watch",
+    category="video",
     capabilities=["detect", "scenes"],
     gpu="T4",
     timeout=600,
@@ -25,7 +25,7 @@ def detect(
     import numpy as np
 
     # Extract frames first
-    from .analyze import extract_frames
+    from .extract import extract_frames
     frames = extract_frames(video_path, fps=fps)
 
     if not frames:

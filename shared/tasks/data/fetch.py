@@ -10,7 +10,7 @@ from ..decorator import task
 
 @task(
     name="download.file",
-    category="get",
+    category="data",
     capabilities=["download", "http"],
     gpu=None,
     timeout=300,
@@ -49,7 +49,7 @@ def file(
 
 @task(
     name="download.youtube",
-    category="get",
+    category="data",
     capabilities=["download", "youtube"],
     gpu=None,
     timeout=600,
@@ -99,7 +99,7 @@ def youtube(
 
 @task(
     name="download.batch",
-    category="get",
+    category="data",
     capabilities=["download", "batch"],
     gpu=None,
     timeout=900,

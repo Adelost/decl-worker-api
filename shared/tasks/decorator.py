@@ -5,8 +5,8 @@ Usage:
     from tasks.decorator import task
 
     @task(
-        name="yolo.detect",
-        category="see",
+        name="image.detect",
+        category="image",
         capabilities=["detect", "objects"],
         gpu="T4",
     )
@@ -38,7 +38,7 @@ def task(
 
     Args:
         name: Task name (e.g., 'yolo.detect')
-        category: Task category ('see', 'hear', 'think', 'speak', 'get', 'transform', 'find', 'watch')
+        category: Task category ('video', 'audio', 'image', 'text', 'data')
         capabilities: List of capabilities (e.g., ['detect', 'objects'])
         gpu: GPU type required (None, 'T4', 'A10G', 'A100')
         timeout: Task timeout in seconds
@@ -149,16 +149,13 @@ def clear_registry() -> None:
     _TASK_REGISTRY.clear()
 
 
-# Categories
+# Categories (data-centric)
 CATEGORIES = [
-    "see",       # Vision tasks
-    "hear",      # Audio input tasks
-    "think",     # LLM/reasoning tasks
-    "speak",     # TTS/audio output tasks
-    "get",       # Input/download tasks
-    "transform", # Utility/conversion tasks
-    "find",      # Search tasks
-    "watch",     # Video tasks
+    "video",     # Video processing
+    "audio",     # Audio processing
+    "image",     # Image processing
+    "text",      # Text processing
+    "data",      # Data operations
 ]
 
 

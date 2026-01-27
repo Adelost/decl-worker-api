@@ -1,5 +1,5 @@
 """
-Whisper-based transcription tasks.
+Audio transcription tasks.
 Uses faster-whisper for optimized GPU inference.
 """
 
@@ -13,8 +13,8 @@ _faster_whisper_model = None
 
 
 @task(
-    name="whisper.transcribe",
-    category="hear",
+    name="audio.transcribe",
+    category="audio",
     capabilities=["transcribe"],
     gpu="T4",
     timeout=600,
@@ -90,8 +90,8 @@ def transcribe(
 
 
 @task(
-    name="whisper.transcribe_stream",
-    category="hear",
+    name="audio.transcribe_stream",
+    category="audio",
     capabilities=["transcribe", "stream"],
     gpu="T4",
     timeout=600,
@@ -134,8 +134,8 @@ def transcribe_stream(
 
 
 @task(
-    name="whisper.detect_language",
-    category="hear",
+    name="audio.detect_language",
+    category="audio",
     capabilities=["detect", "language"],
     gpu="T4",
     timeout=60,
@@ -158,8 +158,8 @@ def detect_language(
 
 
 @task(
-    name="whisper.transcribe_openai",
-    category="hear",
+    name="audio.transcribe_openai",
+    category="audio",
     capabilities=["transcribe", "api"],
     gpu=None,
     timeout=300,

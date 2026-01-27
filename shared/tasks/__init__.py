@@ -1,17 +1,16 @@
 """
-Shared task implementations for worker-ai-dsl.
+Shared task implementations for declarative-worker-api.
 
-Tasks are organized by category and use the @task decorator for auto-registration.
+Tasks are organized by DATA TYPE and use the @task decorator for auto-registration.
 
-Categories:
-- see/      Vision tasks (yolo, sam2, florence, depth, siglip, faces)
-- hear/     Audio tasks (whisper, diarize)
-- think/    LLM tasks (openai)
-- speak/    TTS tasks (openai_tts, elevenlabs, chatterbox, sesame)
-- get/      Input tasks (download, rss)
-- transform/ Utility tasks (convert, chunk, image)
-- find/     Search tasks (semantic, multimodal, vector)
-- watch/    Video tasks (analyze, scenes, tracking)
+Data types:
+- video/    Video processing (extract frames, transcode, scene detection)
+- audio/    Audio processing (convert, transcribe, TTS, diarize)
+- image/    Image processing (transform, detect objects)
+- text/     Text processing (chunk, LLM)
+- data/     Data operations (fetch, RSS, semantic search)
+
+Each module contains both generic operations and AI-enhanced operations.
 """
 
 from .decorator import task, get_task, list_tasks, CATEGORIES

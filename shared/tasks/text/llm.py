@@ -15,7 +15,7 @@ from ...schemas.chat import ChatPayload, ChatResponse
 
 @task(
     name="openai.chat",
-    category="think",
+    category="text",
     capabilities=["chat", "generate"],
     gpu=None,  # OpenAI är API-baserat
     timeout=120,
@@ -53,7 +53,7 @@ def chat(payload: ChatPayload) -> ChatResponse:
 
 @task(
     name="openai.chat_stream",
-    category="think",
+    category="text",
     capabilities=["chat", "generate", "stream"],
     gpu=None,
     timeout=120,
@@ -83,7 +83,7 @@ def chat_stream(payload: ChatPayload) -> Generator[ChatResponse, None, None]:
 
 @task(
     name="openai.embed",
-    category="think",
+    category="text",
     capabilities=["embed", "vectors"],
     gpu=None,
     timeout=60,
@@ -104,7 +104,7 @@ def embed(
 
 @task(
     name="openai.summarize",
-    category="think",
+    category="text",
     capabilities=["summarize"],
     gpu=None,
     timeout=120,
@@ -130,7 +130,7 @@ def summarize(text: str, max_length: int = 200, style: str = "concise") -> str:
 
 @task(
     name="openai.extract",
-    category="think",
+    category="text",
     capabilities=["extract", "structure"],
     gpu=None,
     timeout=120,
@@ -160,7 +160,7 @@ Respond with valid JSON only."""
 
 @task(
     name="openai.classify",
-    category="think",
+    category="text",
     capabilities=["classify"],
     gpu=None,
     timeout=60,
@@ -187,7 +187,7 @@ Respond with JSON: {{"category": "...", "confidence": 0.0-1.0, "reasoning": "...
 
 @task(
     name="openai.translate",
-    category="think",
+    category="text",
     capabilities=["translate"],
     gpu=None,
     timeout=120,
@@ -206,3 +206,106 @@ def translate(text: str, target_language: str, source_language: str = None) -> s
 
     result = chat(payload)
     return result.content
+"""
+Qwen LLM tasks.
+
+SAMMA interface som OpenAI - drop-in replacement!
+"""
+
+from typing import Generator
+
+from ..decorator import task
+
+# Använder SAMMA schema som OpenAI
+from ...schemas.chat import ChatPayload, ChatResponse, Message
+
+
+@task(
+    name="qwen.chat",
+    category="text",
+    capabilities=["chat", "generate"],
+    gpu="A10G",  # Qwen kör lokalt på GPU
+    timeout=120,
+)
+def chat(payload: ChatPayload) -> ChatResponse:
+    """
+    Chat completion using Qwen (local GPU).
+
+    Accepterar EXAKT samma payload som openai.chat!
+    """
+    # Konvertera till Qwen-format internt
+    from transformers import AutoModelForCausalLM, AutoTokenizer
+
+    model_name = "Qwen/Qwen2-7B-Instruct"
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    model = AutoModelForCausalLM.from_pretrained(model_name, device_map="auto")
+
+    # Bygg prompt från messages
+    prompt = _build_prompt(payload.messages)
+
+    inputs = tokenizer(prompt, return_tensors="pt").to(model.device)
+    outputs = model.generate(
+        **inputs,
+        max_new_tokens=payload.max_tokens or 512,
+        temperature=payload.temperature,
+        do_sample=payload.temperature > 0,
+    )
+
+    response_text = tokenizer.decode(outputs[0], skip_special_tokens=True)
+
+    return ChatResponse(
+        content=response_text,
+        model=model_name,
+        usage={"total_tokens": len(outputs[0])},
+    )
+
+
+@task(
+    name="qwen.chat_stream",
+    category="text",
+    capabilities=["chat", "generate", "stream"],
+    gpu="A10G",
+    timeout=120,
+    streaming=True,
+)
+def chat_stream(payload: ChatPayload) -> Generator[ChatResponse, None, None]:
+    """Streaming chat with Qwen."""
+    from transformers import AutoModelForCausalLM, AutoTokenizer, TextIteratorStreamer
+    from threading import Thread
+
+    model_name = "Qwen/Qwen2-7B-Instruct"
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    model = AutoModelForCausalLM.from_pretrained(model_name, device_map="auto")
+
+    prompt = _build_prompt(payload.messages)
+    inputs = tokenizer(prompt, return_tensors="pt").to(model.device)
+
+    streamer = TextIteratorStreamer(tokenizer, skip_special_tokens=True)
+
+    thread = Thread(target=model.generate, kwargs={
+        **inputs,
+        "max_new_tokens": payload.max_tokens or 512,
+        "streamer": streamer,
+    })
+    thread.start()
+
+    for text in streamer:
+        yield ChatResponse(
+            content=text,
+            model=model_name,
+            is_partial=True,
+        )
+
+
+def _build_prompt(messages: list[Message]) -> str:
+    """Convert standard messages to Qwen prompt format."""
+    parts = []
+    for msg in messages:
+        if msg.role == "system":
+            parts.append(f"<|im_start|>system\n{msg.content}<|im_end|>")
+        elif msg.role == "user":
+            parts.append(f"<|im_start|>user\n{msg.content}<|im_end|>")
+        elif msg.role == "assistant":
+            parts.append(f"<|im_start|>assistant\n{msg.content}<|im_end|>")
+    parts.append("<|im_start|>assistant\n")
+    return "\n".join(parts)
