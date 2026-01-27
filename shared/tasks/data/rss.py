@@ -9,8 +9,7 @@ from ..decorator import task
 
 @task(
     name="rss.fetch",
-    category="data",
-    capabilities=["fetch", "rss"],
+    tags=["data", "generic"],
     gpu=None,
     timeout=60,
 )

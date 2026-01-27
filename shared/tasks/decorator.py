@@ -6,8 +6,7 @@ Usage:
 
     @task(
         name="image.detect",
-        category="image",
-        capabilities=["detect", "objects"],
+        tags=["image", "ai", "gpu", "detect"],
         gpu="T4",
     )
     def detect(image_path: str, conf: float = 0.25) -> list[dict]:
@@ -24,10 +23,22 @@ from .types import TaskMeta, ChunkConfig
 _TASK_REGISTRY: dict[str, TaskMeta] = {}
 
 
+# Standard tags for consistency
+STANDARD_TAGS = {
+    # Data types
+    "video", "audio", "image", "text", "data",
+    # Operations
+    "transform", "extract", "embed", "search", "generate", "detect", "convert",
+    # AI vs generic
+    "ai", "generic",
+    # Resources
+    "gpu", "cpu", "streaming",
+}
+
+
 def task(
     name: str,
-    category: str,
-    capabilities: list[str] = None,
+    tags: list[str] = None,
     gpu: Optional[str] = None,
     timeout: int = 300,
     streaming: bool = False,
@@ -37,9 +48,8 @@ def task(
     Decorator to register a task function.
 
     Args:
-        name: Task name (e.g., 'yolo.detect')
-        category: Task category ('video', 'audio', 'image', 'text', 'data')
-        capabilities: List of capabilities (e.g., ['detect', 'objects'])
+        name: Task name (e.g., 'audio.transcribe')
+        tags: List of tags (e.g., ['audio', 'text', 'ai', 'gpu'])
         gpu: GPU type required (None, 'T4', 'A10G', 'A100')
         timeout: Task timeout in seconds
         streaming: Whether this task yields results incrementally
@@ -48,7 +58,15 @@ def task(
     Returns:
         Decorated function with _task_meta attribute
     """
-    capabilities = capabilities or []
+    tags = tags or []
+
+    # Auto-add gpu tag if gpu is specified
+    if gpu and "gpu" not in tags:
+        tags = tags + ["gpu"]
+
+    # Auto-add streaming tag if streaming
+    if streaming and "streaming" not in tags:
+        tags = tags + ["streaming"]
 
     # Convert dict to ChunkConfig if needed
     chunk_config = None
@@ -74,9 +92,8 @@ def task(
         # Create metadata
         meta = TaskMeta(
             name=name,
-            category=category,
             func=func,
-            capabilities=capabilities,
+            tags=tags,
             gpu=gpu,
             timeout=timeout,
             streaming=streaming,
@@ -104,39 +121,47 @@ def get_registry() -> dict[str, TaskMeta]:
 
 
 def get_task(name: str) -> Optional[TaskMeta]:
-    """Get a task by name (or alias)."""
+    """Get a task by name."""
     return _TASK_REGISTRY.get(name)
 
 
 def list_tasks() -> list[TaskMeta]:
-    """List all unique tasks (excluding aliases)."""
-    seen_names = set()
-    tasks = []
-    for meta in _TASK_REGISTRY.values():
-        if meta.name not in seen_names:
-            seen_names.add(meta.name)
-            tasks.append(meta)
-    return tasks
+    """List all registered tasks."""
+    return list(_TASK_REGISTRY.values())
 
 
-def list_by_category(category: str) -> list[TaskMeta]:
-    """List all tasks in a category."""
-    return [t for t in list_tasks() if t.category == category]
+def filter_by_tag(tag: str) -> list[TaskMeta]:
+    """List all tasks with a specific tag."""
+    return [t for t in list_tasks() if t.has_tag(tag)]
 
 
-def list_by_capability(capability: str) -> list[TaskMeta]:
-    """List all tasks with a specific capability."""
-    return [t for t in list_tasks() if capability in t.capabilities]
+def filter_by_tags(tags: list[str], match_all: bool = True) -> list[TaskMeta]:
+    """
+    List tasks matching tags.
+
+    Args:
+        tags: Tags to filter by
+        match_all: If True, task must have ALL tags. If False, ANY tag matches.
+    """
+    if match_all:
+        return [t for t in list_tasks() if t.has_all_tags(tags)]
+    else:
+        return [t for t in list_tasks() if t.has_any_tag(tags)]
 
 
 def list_gpu_tasks() -> list[TaskMeta]:
     """List all tasks requiring GPU."""
-    return [t for t in list_tasks() if t.is_gpu_task]
+    return filter_by_tag("gpu")
 
 
 def list_streaming_tasks() -> list[TaskMeta]:
     """List all streaming tasks."""
-    return [t for t in list_tasks() if t.streaming]
+    return filter_by_tag("streaming")
+
+
+def list_ai_tasks() -> list[TaskMeta]:
+    """List all AI tasks."""
+    return filter_by_tag("ai")
 
 
 def list_chunked_tasks() -> list[TaskMeta]:
@@ -149,16 +174,11 @@ def clear_registry() -> None:
     _TASK_REGISTRY.clear()
 
 
-# Categories (data-centric)
-CATEGORIES = [
-    "video",     # Video processing
-    "audio",     # Audio processing
-    "image",     # Image processing
-    "text",      # Text processing
-    "data",      # Data operations
+# Directories to scan for tasks
+TASK_DIRECTORIES = [
+    "video",
+    "audio",
+    "image",
+    "text",
+    "data",
 ]
-
-
-def validate_category(category: str) -> bool:
-    """Check if a category is valid."""
-    return category in CATEGORIES

@@ -9,8 +9,7 @@ from ..decorator import task
 
 @task(
     name="chunk.text",
-    category="transform",
-    capabilities=["chunk", "text"],
+    tags=["text", "generic", "transform"],
     gpu=None,
     timeout=60,
 )
@@ -53,8 +52,7 @@ def text(
 
 @task(
     name="chunk.sentences",
-    category="transform",
-    capabilities=["chunk", "sentences"],
+    tags=["text", "generic", "transform"],
     gpu=None,
     timeout=60,
 )

@@ -13,7 +13,7 @@ import logging
 from pathlib import Path
 from typing import Optional
 
-from .decorator import CATEGORIES, get_registry
+from .decorator import TASK_DIRECTORIES, get_registry
 
 
 logger = logging.getLogger(__name__)
@@ -39,22 +39,22 @@ def discover_tasks(base_path: Optional[Path] = None) -> int:
     count_before = len(get_registry())
     errors = []
 
-    for category in CATEGORIES:
-        category_path = base_path / category
+    for directory in TASK_DIRECTORIES:
+        dir_path = base_path / directory
 
-        if not category_path.exists():
-            logger.debug(f"Category directory not found: {category}")
+        if not dir_path.exists():
+            logger.debug(f"Task directory not found: {directory}")
             continue
 
-        if not category_path.is_dir():
+        if not dir_path.is_dir():
             continue
 
-        # Import all modules in category
-        for module_info in pkgutil.iter_modules([str(category_path)]):
+        # Import all modules in directory
+        for module_info in pkgutil.iter_modules([str(dir_path)]):
             if module_info.name.startswith("_"):
                 continue
 
-            module_name = f"tasks.{category}.{module_info.name}"
+            module_name = f"tasks.{directory}.{module_info.name}"
             try:
                 importlib.import_module(module_name)
                 logger.debug(f"Imported: {module_name}")

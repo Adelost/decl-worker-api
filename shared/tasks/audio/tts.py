@@ -11,8 +11,7 @@ from ..decorator import task
 
 @task(
     name="elevenlabs.synthesize",
-    category="speak",
-    capabilities=["synthesize", "tts"],
+    tags=["audio", "text", "ai", "generate", "tts"],
     gpu=None,
     timeout=120,
 )
@@ -63,8 +62,7 @@ def synthesize(
 
 @task(
     name="elevenlabs.clone_voice",
-    category="speak",
-    capabilities=["clone", "voice"],
+    tags=["audio", "text", "ai", "generate", "tts"],
     gpu=None,
     timeout=300,
 )
@@ -139,8 +137,7 @@ from ..decorator import task
 
 @task(
     name="openai.tts",
-    category="speak",
-    capabilities=["synthesize", "tts"],
+    tags=["audio", "text", "ai", "generate", "tts"],
     gpu=None,
     timeout=120,
 )
@@ -171,8 +168,7 @@ def synthesize(
 
 @task(
     name="openai.tts_hd",
-    category="speak",
-    capabilities=["synthesize", "tts", "hd"],
+    tags=["audio", "text", "ai", "generate", "tts"],
     gpu=None,
     timeout=120,
 )
@@ -241,8 +237,7 @@ def _get_model(model_type: str = "multilingual", device: str = "cuda"):
 
 @task(
     name="chatterbox.synthesize",
-    category="speak",
-    capabilities=["synthesize", "tts", "multilingual"],
+    tags=["audio", "text", "ai", "generate", "tts"],
     gpu="A10G",
     timeout=300,
 )
@@ -288,8 +283,7 @@ def synthesize(
 
 @task(
     name="chatterbox.synthesize_turbo",
-    category="speak",
-    capabilities=["synthesize", "tts", "fast"],
+    tags=["audio", "text", "ai", "generate", "tts"],
     gpu="T4",
     timeout=120,
 )
@@ -313,8 +307,7 @@ def synthesize_turbo(
 
 @task(
     name="chatterbox.clone_voice",
-    category="speak",
-    capabilities=["clone", "voice"],
+    tags=["audio", "text", "ai", "generate", "tts"],
     gpu=None,
     timeout=60,
 )

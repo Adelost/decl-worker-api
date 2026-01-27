@@ -9,9 +9,8 @@ from ..decorator import task
 
 
 @task(
-    name="yolo.detect",
-    category="image",
-    capabilities=["detect", "objects"],
+    name="image.detect",
+    tags=["image", "ai", "detect"],
     gpu="T4",
     timeout=300,
 )
@@ -50,9 +49,8 @@ def detect(
 
 
 @task(
-    name="yolo.segment",
-    category="image",
-    capabilities=["segment", "instances"],
+    name="image.segment",
+    tags=["image", "ai", "segment"],
     gpu="T4",
     timeout=300,
 )
@@ -90,9 +88,8 @@ def segment(
 
 
 @task(
-    name="yolo.pose",
-    category="image",
-    capabilities=["pose", "keypoints"],
+    name="image.pose",
+    tags=["image", "ai", "detect", "pose"],
     gpu="T4",
     timeout=300,
 )
@@ -135,9 +132,8 @@ def pose(
 
 
 @task(
-    name="yolo.detect_batch",
-    category="image",
-    capabilities=["detect", "objects", "batch"],
+    name="image.detect_batch",
+    tags=["image", "ai", "detect", "batch"],
     gpu="T4",
     timeout=600,
 )
@@ -174,9 +170,8 @@ def detect_batch(
 
 
 @task(
-    name="yolo.track",
-    category="image",
-    capabilities=["track", "objects", "video"],
+    name="video.track",
+    tags=["video", "image", "ai", "detect", "track"],
     gpu="T4",
     timeout=600,
 )

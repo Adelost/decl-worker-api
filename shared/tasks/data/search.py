@@ -24,8 +24,7 @@ def _get_model(model_name: str = "intfloat/multilingual-e5-large"):
 
 @task(
     name="semantic.embed",
-    category="data",
-    capabilities=["embed", "vectors"],
+    tags=["data", "ai", "embed", "search"],
     gpu="T4",
     timeout=120,
 )
@@ -52,8 +51,7 @@ def embed(
 
 @task(
     name="semantic.search",
-    category="data",
-    capabilities=["search", "semantic"],
+    tags=["data", "ai", "embed", "search"],
     gpu="T4",
     timeout=120,
 )
@@ -96,8 +94,7 @@ def search(
 
 @task(
     name="semantic.index",
-    category="data",
-    capabilities=["index", "vectors"],
+    tags=["data", "ai", "embed", "search"],
     gpu="T4",
     timeout=300,
 )

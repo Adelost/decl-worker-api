@@ -9,8 +9,7 @@ from ..decorator import task
 
 @task(
     name="video.detect_scenes",
-    category="video",
-    capabilities=["detect", "scenes"],
+    tags=["video", "ai", "detect"],
     gpu="T4",
     timeout=600,
 )

@@ -10,8 +10,7 @@ from ..decorator import task
 
 @task(
     name="video.analyze",
-    category="video",
-    capabilities=["analyze", "video"],
+    tags=["video", "generic", "extract"],
     gpu="T4",
     timeout=1800,
 )
@@ -36,8 +35,7 @@ def full(
 
 @task(
     name="video.analyze_quick",
-    category="video",
-    capabilities=["analyze", "video", "fast"],
+    tags=["video", "generic", "extract"],
     gpu="T4",
     timeout=600,
 )
@@ -57,8 +55,7 @@ def quick(
 
 @task(
     name="video.extract_frames",
-    category="video",
-    capabilities=["extract", "frames"],
+    tags=["video", "generic", "extract"],
     gpu=None,
     timeout=300,
 )
@@ -100,8 +97,7 @@ def extract_frames(
 
 @task(
     name="video.extract_audio",
-    category="video",
-    capabilities=["extract", "audio"],
+    tags=["video", "generic", "extract"],
     gpu=None,
     timeout=300,
 )

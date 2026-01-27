@@ -10,8 +10,7 @@ from ..decorator import task
 
 @task(
     name="diarize.speakers",
-    category="hear",
-    capabilities=["diarize", "speakers"],
+    tags=["audio", "ai", "diarize"],
     gpu="T4",
     timeout=600,
 )
@@ -43,8 +42,7 @@ def speakers(
 
 @task(
     name="diarize.with_transcript",
-    category="hear",
-    capabilities=["diarize", "speakers", "transcribe"],
+    tags=["audio", "ai", "diarize"],
     gpu="T4",
     timeout=900,
 )

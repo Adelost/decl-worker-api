@@ -9,8 +9,7 @@ from ..decorator import task
 
 @task(
     name="convert.audio",
-    category="audio",
-    capabilities=["convert", "audio"],
+    tags=["audio", "generic", "convert"],
     gpu=None,
     timeout=300,
 )
@@ -43,8 +42,7 @@ def audio(
 
 @task(
     name="convert.video",
-    category="audio",
-    capabilities=["convert", "video"],
+    tags=["audio", "generic", "convert"],
     gpu=None,
     timeout=600,
 )

@@ -14,8 +14,7 @@ _faster_whisper_model = None
 
 @task(
     name="audio.transcribe",
-    category="audio",
-    capabilities=["transcribe"],
+    tags=["audio", "text", "ai", "transcribe"],
     gpu="T4",
     timeout=600,
     chunk={
@@ -91,8 +90,7 @@ def transcribe(
 
 @task(
     name="audio.transcribe_stream",
-    category="audio",
-    capabilities=["transcribe", "stream"],
+    tags=["audio", "text", "ai", "transcribe"],
     gpu="T4",
     timeout=600,
     streaming=True,
@@ -135,8 +133,7 @@ def transcribe_stream(
 
 @task(
     name="audio.detect_language",
-    category="audio",
-    capabilities=["detect", "language"],
+    tags=["audio", "text", "ai", "transcribe"],
     gpu="T4",
     timeout=60,
 )
@@ -159,8 +156,7 @@ def detect_language(
 
 @task(
     name="audio.transcribe_openai",
-    category="audio",
-    capabilities=["transcribe", "api"],
+    tags=["audio", "text", "ai", "transcribe"],
     gpu=None,
     timeout=300,
 )

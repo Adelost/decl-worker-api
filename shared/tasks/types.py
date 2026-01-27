@@ -28,16 +28,13 @@ class TaskMeta:
     """Metadata for a registered task."""
 
     name: str
-    """Task name (e.g., 'yolo.detect')."""
-
-    category: str
-    """Task category (e.g., 'see', 'hear', 'think')."""
+    """Task name (e.g., 'audio.transcribe')."""
 
     func: Callable[..., Any]
     """The actual task function."""
 
-    capabilities: list[str] = field(default_factory=list)
-    """Task capabilities (e.g., ['detect', 'objects'])."""
+    tags: list[str] = field(default_factory=list)
+    """Task tags (e.g., ['audio', 'text', 'ai', 'gpu'])."""
 
     gpu: Optional[str] = None
     """GPU type required (None, 'T4', 'A10G', 'A100')."""
@@ -64,12 +61,23 @@ class TaskMeta:
         """Check if task supports chunking."""
         return self.chunk is not None
 
+    def has_tag(self, tag: str) -> bool:
+        """Check if task has a specific tag."""
+        return tag in self.tags
+
+    def has_all_tags(self, tags: list[str]) -> bool:
+        """Check if task has all specified tags."""
+        return all(t in self.tags for t in tags)
+
+    def has_any_tag(self, tags: list[str]) -> bool:
+        """Check if task has any of the specified tags."""
+        return any(t in self.tags for t in tags)
+
     def to_dict(self) -> dict:
         """Convert to dictionary for serialization."""
         return {
             "name": self.name,
-            "category": self.category,
-            "capabilities": self.capabilities,
+            "tags": self.tags,
             "gpu": self.gpu,
             "timeout": self.timeout,
             "streaming": self.streaming,

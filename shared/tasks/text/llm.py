@@ -15,8 +15,7 @@ from ...schemas.chat import ChatPayload, ChatResponse
 
 @task(
     name="openai.chat",
-    category="text",
-    capabilities=["chat", "generate"],
+    tags=["text", "ai", "generate"],
     gpu=None,  # OpenAI är API-baserat
     timeout=120,
 )
@@ -53,8 +52,7 @@ def chat(payload: ChatPayload) -> ChatResponse:
 
 @task(
     name="openai.chat_stream",
-    category="text",
-    capabilities=["chat", "generate", "stream"],
+    tags=["text", "ai", "generate"],
     gpu=None,
     timeout=120,
     streaming=True,
@@ -83,8 +81,7 @@ def chat_stream(payload: ChatPayload) -> Generator[ChatResponse, None, None]:
 
 @task(
     name="openai.embed",
-    category="text",
-    capabilities=["embed", "vectors"],
+    tags=["text", "ai", "generate"],
     gpu=None,
     timeout=60,
 )
@@ -104,8 +101,7 @@ def embed(
 
 @task(
     name="openai.summarize",
-    category="text",
-    capabilities=["summarize"],
+    tags=["text", "ai", "generate"],
     gpu=None,
     timeout=120,
 )
@@ -130,8 +126,7 @@ def summarize(text: str, max_length: int = 200, style: str = "concise") -> str:
 
 @task(
     name="openai.extract",
-    category="text",
-    capabilities=["extract", "structure"],
+    tags=["text", "ai", "generate"],
     gpu=None,
     timeout=120,
 )
@@ -160,8 +155,7 @@ Respond with valid JSON only."""
 
 @task(
     name="openai.classify",
-    category="text",
-    capabilities=["classify"],
+    tags=["text", "ai", "generate"],
     gpu=None,
     timeout=60,
 )
@@ -187,8 +181,7 @@ Respond with JSON: {{"category": "...", "confidence": 0.0-1.0, "reasoning": "...
 
 @task(
     name="openai.translate",
-    category="text",
-    capabilities=["translate"],
+    tags=["text", "ai", "generate"],
     gpu=None,
     timeout=120,
 )
@@ -222,8 +215,7 @@ from ...schemas.chat import ChatPayload, ChatResponse, Message
 
 @task(
     name="qwen.chat",
-    category="text",
-    capabilities=["chat", "generate"],
+    tags=["text", "ai", "generate"],
     gpu="A10G",  # Qwen kör lokalt på GPU
     timeout=120,
 )
@@ -262,8 +254,7 @@ def chat(payload: ChatPayload) -> ChatResponse:
 
 @task(
     name="qwen.chat_stream",
-    category="text",
-    capabilities=["chat", "generate", "stream"],
+    tags=["text", "ai", "generate"],
     gpu="A10G",
     timeout=120,
     streaming=True,
