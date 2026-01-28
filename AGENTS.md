@@ -70,6 +70,43 @@ const task = {
 @task(name="image.detect", tags=["image", "ai", "detect"])
 ```
 
+### Simple by Default, Strict When Needed
+
+The `@task` decorator uses Python type hints by default - no extra dependencies required.
+For tasks that need strict runtime validation (e.g., GPU tasks where bad input wastes money),
+optional Pydantic support is available.
+
+```python
+# SIMPLE (default) - type hints are enough for most tasks
+@task(name="image.detect", tags=["image", "ai"], gpu="T4")
+def detect(image_path: str, conf: float = 0.25) -> list[dict]:
+    """Detect objects in image."""
+    ...
+
+# STRICT (optional) - Pydantic for validation + JSON Schema
+from pydantic import BaseModel
+
+class DetectInput(BaseModel):
+    image_path: str
+    confidence: float = 0.5
+
+class DetectOutput(BaseModel):
+    detections: list[dict]
+    count: int
+
+@task(name="image.detect", tags=["image", "ai"], gpu="T4",
+      input=DetectInput, output=DetectOutput)
+def detect(input: DetectInput) -> DetectOutput:
+    """Detect objects in image with validated input/output."""
+    ...
+```
+
+**Why this design?**
+- Simple tasks shouldn't require Pydantic boilerplate
+- Pydantic adds real value for validation and JSON Schema generation
+- Keeping it optional means no forced dependencies
+- Matches how DAUI works: types describe, runtime validates when needed
+
 ## Directory Structure
 
 ```
@@ -135,7 +172,7 @@ tests/
 
 ### Adding a New Task
 
-1. Create task with @task decorator:
+**Simple approach** (recommended for most tasks):
 ```python
 # shared/tasks/image/my_detector.py
 from ..decorator import task
@@ -151,7 +188,34 @@ def my_detect(image_path: str, conf: float = 0.25) -> list[dict]:
     return [{"label": "cat", "confidence": 0.95}]
 ```
 
-2. Task is automatically discovered and available.
+**With Pydantic validation** (for strict input/output contracts):
+```python
+from pydantic import BaseModel
+from ..decorator import task
+
+class MyDetectInput(BaseModel):
+    image_path: str
+    conf: float = 0.25
+
+class MyDetectOutput(BaseModel):
+    detections: list[dict]
+
+@task(
+    name="image.my_detect",
+    tags=["image", "ai", "detect"],
+    gpu="T4",
+    input=MyDetectInput,
+    output=MyDetectOutput,
+)
+def my_detect(input: MyDetectInput) -> MyDetectOutput:
+    """Detect objects in an image."""
+    return MyDetectOutput(detections=[{"label": "cat", "confidence": 0.95}])
+```
+
+Task is automatically discovered and available. Use Pydantic when:
+- Input comes from external APIs (validation prevents bad data)
+- You need JSON Schema for TypeScript clients
+- GPU tasks where invalid input = wasted compute cost
 
 ### Standard Tags
 

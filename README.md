@@ -331,12 +331,13 @@ declarative-worker-api/
 
 ## @task Decorator
 
-Tasks are registered using the `@task` decorator:
+Tasks are registered using the `@task` decorator. The decorator is designed to be **simple by default, strict when needed**.
+
+### Simple (default)
+
+Use Python type hints - no extra dependencies:
 
 ```python
-# shared/tasks/image/my_detector.py
-from ..decorator import task
-
 @task(
     name="image.my_detect",
     tags=["image", "ai", "detect"],
@@ -347,6 +348,43 @@ def my_detect(image_path: str, conf: float = 0.25) -> list[dict]:
     """Detect objects in an image."""
     return [{"label": "cat", "confidence": 0.95}]
 ```
+
+### With Pydantic Validation (optional)
+
+For tasks that need strict runtime validation and JSON Schema generation:
+
+```python
+from pydantic import BaseModel
+from ..decorator import task
+
+class DetectInput(BaseModel):
+    image_path: str
+    confidence: float = 0.5
+
+class DetectOutput(BaseModel):
+    detections: list[dict]
+    count: int
+
+@task(
+    name="image.my_detect",
+    tags=["image", "ai", "detect"],
+    gpu="T4",
+    input=DetectInput,
+    output=DetectOutput,
+)
+def my_detect(input: DetectInput) -> DetectOutput:
+    """Detect objects in an image."""
+    return DetectOutput(detections=[...], count=5)
+```
+
+**When to use Pydantic:**
+- GPU tasks (bad input = wasted compute cost)
+- External API input (validate before processing)
+- TypeScript clients (auto-generated JSON Schema)
+
+**Design philosophy:** Most tasks are simple - a function with type hints is enough.
+Pydantic adds boilerplate, so it's opt-in for tasks that genuinely benefit from validation.
+This matches DAUI's approach: types describe the interface, runtime validates when needed.
 
 ### Chunking Support
 
