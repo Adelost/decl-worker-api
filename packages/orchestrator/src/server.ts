@@ -4,7 +4,7 @@
 
 import Fastify from "fastify";
 import cors from "@fastify/cors";
-import type { Task } from "@dwa/core";
+import type { Task, TaskResult } from "@dwa/core";
 import { registerBackend } from "@dwa/core";
 import { enqueueTask, getTaskStatus, createWorkers, shutdown } from "./queue.js";
 import { ModalBackend } from "./backends/modal.js";
@@ -13,6 +13,36 @@ import { RayBackend } from "./backends/ray.js";
 const fastify = Fastify({
   logger: true,
 });
+
+/**
+ * API response type for task status.
+ * Maps internal TaskResult to public API contract.
+ *
+ * This is the DTO pattern: internal types stay internal,
+ * public API has its own stable contract.
+ */
+interface ApiTaskResult<T = unknown> {
+  taskId: string;
+  status: "queued" | "running" | "completed" | "failed";
+  result?: T;
+  error?: string;
+  progress?: number;
+}
+
+/**
+ * Maps internal TaskResult to public API response.
+ * - id → taskId (semantic naming for SDK users)
+ * - "pending" → "queued" (user-friendly status)
+ */
+function toApiResponse<T = unknown>(internal: TaskResult): ApiTaskResult<T> {
+  return {
+    taskId: internal.id,
+    status: internal.status === "pending" ? "queued" : internal.status as ApiTaskResult["status"],
+    result: internal.result as T,
+    error: internal.error,
+    progress: internal.progress,
+  };
+}
 
 // Enable CORS
 await fastify.register(cors, {
@@ -62,8 +92,8 @@ fastify.post<{ Body: Task }>("/api/tasks", async (request, reply) => {
   try {
     const jobId = await enqueueTask(task);
     return {
-      id: jobId,
-      status: "pending",
+      taskId: jobId,
+      status: "queued" as const,
       queue: task.queue || "default",
     };
   } catch (error) {
@@ -82,13 +112,13 @@ fastify.get<{
   const { id } = request.params;
   const { queue } = request.query;
 
-  const status = await getTaskStatus(id, queue);
+  const internal = await getTaskStatus(id, queue);
 
-  if (!status) {
+  if (!internal) {
     return reply.status(404).send({ error: "Task not found" });
   }
 
-  return status;
+  return toApiResponse(internal);
 });
 
 // List tasks with actual job data
@@ -132,18 +162,18 @@ fastify.delete<{
   const { id } = request.params;
   const { queue = "default" } = request.query;
 
-  const status = await getTaskStatus(id, queue);
+  const internal = await getTaskStatus(id, queue);
 
-  if (!status) {
+  if (!internal) {
     return reply.status(404).send({ error: "Task not found" });
   }
 
-  if (status.status === "completed" || status.status === "failed") {
+  if (internal.status === "completed" || internal.status === "failed") {
     return reply.status(400).send({ error: "Task already finished" });
   }
 
   // Note: Actual cancellation requires worker cooperation
-  return { id, cancelled: true };
+  return { taskId: id, cancelled: true };
 });
 
 // Start workers and server
