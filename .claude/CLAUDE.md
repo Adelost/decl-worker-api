@@ -13,7 +13,7 @@ See [AGENTS.md](../AGENTS.md) for full context.
 - `packages/orchestrator/src/engine/` - Dispatcher, Effects, Visualize
 - `backends/modal/app.py` - 72 task handlers
 - `shared/tasks/` - Shared Python logic
-- `tests/e2e/` - Integration tests with mock backend
+- `tests/component/` - Component tests with MockBackend
 
 **DAG execution:**
 ```typescript
