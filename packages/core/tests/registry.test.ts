@@ -2,7 +2,8 @@
  * Unit tests for backend registry.
  */
 
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { vi } from "vitest";
+import { feature, rule, unit, expect } from "bdd-vitest";
 import {
   registerBackend,
   unregisterBackend,
@@ -14,7 +15,6 @@ import {
   type Task,
 } from "../src/index.js";
 
-// Mock backend factory
 function createMockBackend(name: string, healthy = true): Backend {
   return {
     name,
@@ -24,180 +24,217 @@ function createMockBackend(name: string, healthy = true): Backend {
   };
 }
 
-describe("Backend Registry", () => {
-  beforeEach(() => {
-    clearBackends();
-  });
+const withCleanRegistry = () => {
+  clearBackends();
+};
 
-  describe("registerBackend", () => {
-    it("should register a backend", () => {
-      const backend = createMockBackend("modal");
-      registerBackend(backend);
-
-      expect(getBackend("modal")).toBe(backend);
+feature("Backend Registry", () => {
+  rule("registerBackend", () => {
+    unit("registers a backend", {
+      given: ["a clean registry", withCleanRegistry],
+      when: ["registering a backend", () => {
+        const backend = createMockBackend("modal");
+        registerBackend(backend);
+        return backend;
+      }],
+      then: ["backend is retrievable", (backend) => {
+        expect(getBackend("modal")).toBe(backend);
+      }],
+      cleanup: clearBackends,
     });
 
-    it("should overwrite existing backend with same name", () => {
-      const backend1 = createMockBackend("modal");
-      const backend2 = createMockBackend("modal");
-
-      registerBackend(backend1);
-      registerBackend(backend2);
-
-      expect(getBackend("modal")).toBe(backend2);
-    });
-  });
-
-  describe("unregisterBackend", () => {
-    it("should remove a registered backend", () => {
-      const backend = createMockBackend("modal");
-      registerBackend(backend);
-
-      const result = unregisterBackend("modal");
-
-      expect(result).toBe(true);
-      expect(getBackend("modal")).toBeUndefined();
-    });
-
-    it("should return false for non-existent backend", () => {
-      const result = unregisterBackend("nonexistent");
-
-      expect(result).toBe(false);
+    unit("overwrites existing backend with same name", {
+      given: ["a clean registry", withCleanRegistry],
+      when: ["registering two backends with same name", () => {
+        const backend1 = createMockBackend("modal");
+        const backend2 = createMockBackend("modal");
+        registerBackend(backend1);
+        registerBackend(backend2);
+        return backend2;
+      }],
+      then: ["second backend wins", (backend2) => {
+        expect(getBackend("modal")).toBe(backend2);
+      }],
+      cleanup: clearBackends,
     });
   });
 
-  describe("getBackend", () => {
-    it("should return undefined for non-existent backend", () => {
-      expect(getBackend("nonexistent")).toBeUndefined();
+  rule("unregisterBackend", () => {
+    unit("removes a registered backend", {
+      given: ["a registered backend", () => {
+        clearBackends();
+        registerBackend(createMockBackend("modal"));
+      }],
+      when: ["unregistering it", () => unregisterBackend("modal")],
+      then: ["returns true and backend is gone", (result) => {
+        expect(result).toBe(true);
+        expect(getBackend("modal")).toBeUndefined();
+      }],
+      cleanup: clearBackends,
     });
 
-    it("should return registered backend", () => {
-      const backend = createMockBackend("ray");
-      registerBackend(backend);
-
-      expect(getBackend("ray")).toBe(backend);
-    });
-  });
-
-  describe("getAllBackends", () => {
-    it("should return empty array when no backends registered", () => {
-      expect(getAllBackends()).toEqual([]);
-    });
-
-    it("should return all registered backends", () => {
-      const modal = createMockBackend("modal");
-      const ray = createMockBackend("ray");
-
-      registerBackend(modal);
-      registerBackend(ray);
-
-      const backends = getAllBackends();
-
-      expect(backends).toHaveLength(2);
-      expect(backends).toContain(modal);
-      expect(backends).toContain(ray);
+    unit("returns false for non-existent backend", {
+      given: ["a clean registry", withCleanRegistry],
+      when: ["unregistering non-existent", () => unregisterBackend("nonexistent")],
+      then: ["returns false", (result) => {
+        expect(result).toBe(false);
+      }],
+      cleanup: clearBackends,
     });
   });
 
-  describe("selectBackend", () => {
-    it("should select specified backend when not auto", async () => {
-      const modal = createMockBackend("modal");
-      const ray = createMockBackend("ray");
-
-      registerBackend(modal);
-      registerBackend(ray);
-
-      const task: Task = {
-        type: "llm.chat",
-        backend: "ray",
-        payload: { prompt: "Hello" },
-      };
-
-      const selected = await selectBackend(task);
-
-      expect(selected).toBe(ray);
+  rule("getBackend", () => {
+    unit("returns undefined for non-existent backend", {
+      given: ["a clean registry", withCleanRegistry],
+      then: ["returns undefined", () => {
+        expect(getBackend("nonexistent")).toBeUndefined();
+      }],
+      cleanup: clearBackends,
     });
 
-    it("should throw for unregistered specified backend", async () => {
-      const task: Task = {
-        type: "llm.chat",
-        backend: "modal",
-        payload: { prompt: "Hello" },
-      };
-
-      await expect(selectBackend(task)).rejects.toThrow('Backend "modal" not registered');
-    });
-
-    it("should throw for unhealthy specified backend", async () => {
-      const modal = createMockBackend("modal", false);
-      registerBackend(modal);
-
-      const task: Task = {
-        type: "llm.chat",
-        backend: "modal",
-        payload: { prompt: "Hello" },
-      };
-
-      await expect(selectBackend(task)).rejects.toThrow('Backend "modal" is not healthy');
-    });
-
-    it("should auto-select first healthy backend", async () => {
-      const unhealthy = createMockBackend("modal", false);
-      const healthy = createMockBackend("ray", true);
-
-      registerBackend(unhealthy);
-      registerBackend(healthy);
-
-      const task: Task = {
-        type: "llm.chat",
-        backend: "auto",
-        payload: { prompt: "Hello" },
-      };
-
-      const selected = await selectBackend(task);
-
-      expect(selected).toBe(healthy);
-    });
-
-    it("should auto-select when no backend specified", async () => {
-      const modal = createMockBackend("modal");
-      registerBackend(modal);
-
-      const task: Task = {
-        type: "llm.chat",
-        payload: { prompt: "Hello" },
-      };
-
-      const selected = await selectBackend(task);
-
-      expect(selected).toBe(modal);
-    });
-
-    it("should throw when no healthy backend available for auto", async () => {
-      const unhealthy1 = createMockBackend("modal", false);
-      const unhealthy2 = createMockBackend("ray", false);
-
-      registerBackend(unhealthy1);
-      registerBackend(unhealthy2);
-
-      const task: Task = {
-        type: "llm.chat",
-        backend: "auto",
-        payload: { prompt: "Hello" },
-      };
-
-      await expect(selectBackend(task)).rejects.toThrow("No healthy backend available");
+    unit("returns registered backend", {
+      given: ["a registered backend", () => {
+        clearBackends();
+        const backend = createMockBackend("ray");
+        registerBackend(backend);
+        return backend;
+      }],
+      then: ["backend is returned", (backend) => {
+        expect(getBackend("ray")).toBe(backend);
+      }],
+      cleanup: clearBackends,
     });
   });
 
-  describe("clearBackends", () => {
-    it("should remove all backends", () => {
-      registerBackend(createMockBackend("modal"));
-      registerBackend(createMockBackend("ray"));
+  rule("getAllBackends", () => {
+    unit("returns empty array when no backends registered", {
+      given: ["a clean registry", withCleanRegistry],
+      then: ["empty array", () => {
+        expect(getAllBackends()).toEqual([]);
+      }],
+      cleanup: clearBackends,
+    });
 
-      clearBackends();
+    unit("returns all registered backends", {
+      given: ["two registered backends", () => {
+        clearBackends();
+        const modal = createMockBackend("modal");
+        const ray = createMockBackend("ray");
+        registerBackend(modal);
+        registerBackend(ray);
+        return { modal, ray };
+      }],
+      then: ["both are returned", (ctx) => {
+        const backends = getAllBackends();
+        expect(backends).toHaveLength(2);
+        expect(backends).toContain(ctx.modal);
+        expect(backends).toContain(ctx.ray);
+      }],
+      cleanup: clearBackends,
+    });
+  });
 
-      expect(getAllBackends()).toHaveLength(0);
+  rule("selectBackend", () => {
+    unit("selects specified backend when not auto", {
+      given: ["two healthy backends", () => {
+        clearBackends();
+        const modal = createMockBackend("modal");
+        const ray = createMockBackend("ray");
+        registerBackend(modal);
+        registerBackend(ray);
+        return ray;
+      }],
+      when: ["selecting ray explicitly", (ray) => {
+        const task: Task = { type: "llm.chat", backend: "ray", payload: { prompt: "Hello" } };
+        return selectBackend(task);
+      }],
+      then: ["ray is selected", (selected, ray) => {
+        expect(selected).toBe(ray);
+      }],
+      cleanup: clearBackends,
+    });
+
+    unit("throws for unregistered specified backend", {
+      given: ["a clean registry", withCleanRegistry],
+      then: ["throws not registered", async () => {
+        const task: Task = { type: "llm.chat", backend: "modal", payload: { prompt: "Hello" } };
+        await expect(selectBackend(task)).rejects.toThrow('Backend "modal" not registered');
+      }],
+      cleanup: clearBackends,
+    });
+
+    unit("throws for unhealthy specified backend", {
+      given: ["an unhealthy backend", () => {
+        clearBackends();
+        registerBackend(createMockBackend("modal", false));
+      }],
+      then: ["throws not healthy", async () => {
+        const task: Task = { type: "llm.chat", backend: "modal", payload: { prompt: "Hello" } };
+        await expect(selectBackend(task)).rejects.toThrow('Backend "modal" is not healthy');
+      }],
+      cleanup: clearBackends,
+    });
+
+    unit("auto-selects first healthy backend", {
+      given: ["one unhealthy and one healthy", () => {
+        clearBackends();
+        registerBackend(createMockBackend("modal", false));
+        const healthy = createMockBackend("ray", true);
+        registerBackend(healthy);
+        return healthy;
+      }],
+      when: ["selecting with auto", (healthy) => {
+        const task: Task = { type: "llm.chat", backend: "auto", payload: { prompt: "Hello" } };
+        return selectBackend(task);
+      }],
+      then: ["healthy backend is selected", (selected, healthy) => {
+        expect(selected).toBe(healthy);
+      }],
+      cleanup: clearBackends,
+    });
+
+    unit("auto-selects when no backend specified", {
+      given: ["a registered backend", () => {
+        clearBackends();
+        const modal = createMockBackend("modal");
+        registerBackend(modal);
+        return modal;
+      }],
+      when: ["selecting without backend field", (modal) => {
+        const task: Task = { type: "llm.chat", payload: { prompt: "Hello" } };
+        return selectBackend(task);
+      }],
+      then: ["available backend is selected", (selected, modal) => {
+        expect(selected).toBe(modal);
+      }],
+      cleanup: clearBackends,
+    });
+
+    unit("throws when no healthy backend available for auto", {
+      given: ["only unhealthy backends", () => {
+        clearBackends();
+        registerBackend(createMockBackend("modal", false));
+        registerBackend(createMockBackend("ray", false));
+      }],
+      then: ["throws no healthy", async () => {
+        const task: Task = { type: "llm.chat", backend: "auto", payload: { prompt: "Hello" } };
+        await expect(selectBackend(task)).rejects.toThrow("No healthy backend available");
+      }],
+      cleanup: clearBackends,
+    });
+  });
+
+  rule("clearBackends", () => {
+    unit("removes all backends", {
+      given: ["two registered backends", () => {
+        clearBackends();
+        registerBackend(createMockBackend("modal"));
+        registerBackend(createMockBackend("ray"));
+      }],
+      when: ["clearing", () => clearBackends()],
+      then: ["no backends remain", () => {
+        expect(getAllBackends()).toHaveLength(0);
+      }],
     });
   });
 });

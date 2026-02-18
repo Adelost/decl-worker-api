@@ -2,313 +2,367 @@
  * Tests for DWA dashboard client.
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { vi } from "vitest";
+import { feature, rule, component, expect } from "bdd-vitest";
 import { createDWAClient } from "../src/lib/client.js";
 
-describe("DWA Client", () => {
-  let mockFetch: ReturnType<typeof vi.fn>;
+let mockFetch: ReturnType<typeof vi.fn>;
 
-  beforeEach(() => {
-    mockFetch = vi.fn();
-    vi.stubGlobal("fetch", mockFetch);
-  });
+const withMockFetch = () => {
+  mockFetch = vi.fn();
+  vi.stubGlobal("fetch", mockFetch);
+};
 
-  afterEach(() => {
-    vi.unstubAllGlobals();
-  });
+const cleanupFetch = () => {
+  vi.unstubAllGlobals();
+};
 
-  describe("createDWAClient", () => {
-    it("should create a client with default config", () => {
-      const client = createDWAClient({ baseUrl: "http://localhost:3000" });
-
-      expect(client.status).toBe("disconnected");
-      expect(client.jobs.data).toBeNull();
-      expect(client.currentJob).toBeNull();
+feature("DWA Client", () => {
+  rule("createDWAClient", () => {
+    component("creates a client with default config", {
+      given: ["mock fetch", withMockFetch],
+      when: ["creating client", () => createDWAClient({ baseUrl: "http://localhost:3000" })],
+      then: ["has default state", (client) => {
+        expect(client.status).toBe("disconnected");
+        expect(client.jobs.data).toBeNull();
+        expect(client.currentJob).toBeNull();
+      }],
+      cleanup: cleanupFetch,
     });
   });
 
-  describe("fetchJobs", () => {
-    it("should fetch jobs from API", async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => [
-          { id: "task-1", status: "running", type: "video.process" },
-          { id: "task-2", status: "completed", type: "audio.transcribe" },
-        ],
-      });
-
-      const client = createDWAClient({ baseUrl: "http://localhost:3000" });
-      await client.fetchJobs();
-
-      expect(mockFetch).toHaveBeenCalledWith("http://localhost:3000/api/tasks");
-      expect(client.jobs.data).toHaveLength(2);
-      expect(client.jobs.data![0].taskId).toBe("task-1");
-      expect(client.jobs.data![0].status).toBe("running");
-      expect(client.status).toBe("connected");
+  rule("fetchJobs", () => {
+    component("fetches jobs from API", {
+      given: ["mock fetch returning jobs", () => {
+        withMockFetch();
+        mockFetch.mockResolvedValueOnce({
+          ok: true,
+          json: async () => [
+            { id: "task-1", status: "running", type: "video.process" },
+            { id: "task-2", status: "completed", type: "audio.transcribe" },
+          ],
+        });
+      }],
+      when: ["fetching jobs", async () => {
+        const client = createDWAClient({ baseUrl: "http://localhost:3000" });
+        await client.fetchJobs();
+        return client;
+      }],
+      then: ["jobs are populated", (client) => {
+        expect(mockFetch).toHaveBeenCalledWith("http://localhost:3000/api/tasks");
+        expect(client.jobs.data).toHaveLength(2);
+        expect(client.jobs.data![0].taskId).toBe("task-1");
+        expect(client.jobs.data![0].status).toBe("running");
+        expect(client.status).toBe("connected");
+      }],
+      cleanup: cleanupFetch,
     });
 
-    it("should handle fetch error", async () => {
-      mockFetch.mockRejectedValueOnce(new Error("Network error"));
-
-      const client = createDWAClient({ baseUrl: "http://localhost:3000" });
-      await client.fetchJobs();
-
-      expect(client.jobs.error).toBeInstanceOf(Error);
-      expect(client.jobs.error!.message).toBe("Network error");
-      expect(client.status).toBe("error");
+    component("handles fetch error", {
+      given: ["mock fetch that rejects", () => {
+        withMockFetch();
+        mockFetch.mockRejectedValueOnce(new Error("Network error"));
+      }],
+      when: ["fetching jobs", async () => {
+        const client = createDWAClient({ baseUrl: "http://localhost:3000" });
+        await client.fetchJobs();
+        return client;
+      }],
+      then: ["error state is set", (client) => {
+        expect(client.jobs.error).toBeInstanceOf(Error);
+        expect(client.jobs.error!.message).toBe("Network error");
+        expect(client.status).toBe("error");
+      }],
+      cleanup: cleanupFetch,
     });
 
-    it("should handle HTTP error", async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: false,
-        status: 500,
-        statusText: "Internal Server Error",
-      });
-
-      const client = createDWAClient({ baseUrl: "http://localhost:3000" });
-      await client.fetchJobs();
-
-      expect(client.jobs.error).toBeInstanceOf(Error);
-      expect(client.jobs.error!.message).toContain("500");
-      expect(client.status).toBe("error");
+    component("handles HTTP error", {
+      given: ["mock fetch returning 500", () => {
+        withMockFetch();
+        mockFetch.mockResolvedValueOnce({
+          ok: false,
+          status: 500,
+          statusText: "Internal Server Error",
+        });
+      }],
+      when: ["fetching jobs", async () => {
+        const client = createDWAClient({ baseUrl: "http://localhost:3000" });
+        await client.fetchJobs();
+        return client;
+      }],
+      then: ["error state with status code", (client) => {
+        expect(client.jobs.error).toBeInstanceOf(Error);
+        expect(client.jobs.error!.message).toContain("500");
+        expect(client.status).toBe("error");
+      }],
+      cleanup: cleanupFetch,
     });
 
-    it("should pass query parameters", async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => [],
-      });
-
-      const client = createDWAClient({ baseUrl: "http://localhost:3000" });
-      await client.fetchJobs({ queue: "gpu", status: "running", limit: 10 });
-
-      expect(mockFetch).toHaveBeenCalledWith(
-        "http://localhost:3000/api/tasks?queue=gpu&status=running&limit=10"
-      );
-    });
-  });
-
-  describe("fetchJobDetail", () => {
-    it("should fetch single job detail", async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          id: "task-123",
-          status: "running",
-          type: "pipeline",
-          steps: [{ id: "s1", task: "download" }],
-          stepStatus: [{ id: "s1", task: "download", status: "completed" }],
-        }),
-      });
-
-      const client = createDWAClient({ baseUrl: "http://localhost:3000" });
-      await client.fetchJobDetail("task-123");
-
-      expect(mockFetch).toHaveBeenCalledWith(
-        "http://localhost:3000/api/tasks/task-123"
-      );
-      expect(client.currentJob).not.toBeNull();
-      expect(client.currentJob!.taskId).toBe("task-123");
-      expect(client.currentJob!.steps).toHaveLength(1);
-    });
-  });
-
-  describe("cancelTask", () => {
-    it("should send DELETE request to cancel task", async () => {
-      // Mock cancel response
-      mockFetch.mockResolvedValueOnce({ ok: true });
-      // Mock refresh jobs response
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => [],
-      });
-
-      const client = createDWAClient({ baseUrl: "http://localhost:3000" });
-      const result = await client.cancelTask("task-123");
-
-      expect(result).toBe(true);
-      expect(mockFetch).toHaveBeenCalledWith(
-        "http://localhost:3000/api/tasks/task-123",
-        { method: "DELETE" }
-      );
-    });
-
-    it("should return false on cancel error", async () => {
-      mockFetch.mockRejectedValueOnce(new Error("Cancel failed"));
-
-      const client = createDWAClient({ baseUrl: "http://localhost:3000" });
-      const result = await client.cancelTask("task-123");
-
-      expect(result).toBe(false);
+    component("passes query parameters", {
+      given: ["mock fetch returning empty", () => {
+        withMockFetch();
+        mockFetch.mockResolvedValueOnce({ ok: true, json: async () => [] });
+      }],
+      when: ["fetching with filters", async () => {
+        const client = createDWAClient({ baseUrl: "http://localhost:3000" });
+        await client.fetchJobs({ queue: "gpu", status: "running", limit: 10 });
+      }],
+      then: ["URL includes query params", () => {
+        expect(mockFetch).toHaveBeenCalledWith(
+          "http://localhost:3000/api/tasks?queue=gpu&status=running&limit=10",
+        );
+      }],
+      cleanup: cleanupFetch,
     });
   });
 
-  describe("retryTask", () => {
-    it("should send POST request to retry task", async () => {
-      // Mock retry response
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ taskId: "task-456" }),
-      });
-      // Mock refresh jobs response
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => [],
-      });
-
-      const client = createDWAClient({ baseUrl: "http://localhost:3000" });
-      const newTaskId = await client.retryTask("task-123");
-
-      expect(newTaskId).toBe("task-456");
-      expect(mockFetch).toHaveBeenCalledWith(
-        "http://localhost:3000/api/tasks/task-123/retry",
-        { method: "POST" }
-      );
-    });
-
-    it("should return null on retry error", async () => {
-      mockFetch.mockRejectedValueOnce(new Error("Retry failed"));
-
-      const client = createDWAClient({ baseUrl: "http://localhost:3000" });
-      const result = await client.retryTask("task-123");
-
-      expect(result).toBeNull();
+  rule("fetchJobDetail", () => {
+    component("fetches single job detail", {
+      given: ["mock fetch returning detail", () => {
+        withMockFetch();
+        mockFetch.mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            id: "task-123",
+            status: "running",
+            type: "pipeline",
+            steps: [{ id: "s1", task: "download" }],
+            stepStatus: [{ id: "s1", task: "download", status: "completed" }],
+          }),
+        });
+      }],
+      when: ["fetching job detail", async () => {
+        const client = createDWAClient({ baseUrl: "http://localhost:3000" });
+        await client.fetchJobDetail("task-123");
+        return client;
+      }],
+      then: ["detail is populated", (client) => {
+        expect(mockFetch).toHaveBeenCalledWith("http://localhost:3000/api/tasks/task-123");
+        expect(client.currentJob).not.toBeNull();
+        expect(client.currentJob!.taskId).toBe("task-123");
+        expect(client.currentJob!.steps).toHaveLength(1);
+      }],
+      cleanup: cleanupFetch,
     });
   });
 
-  describe("selectStep", () => {
-    it("should update selected step ID", () => {
-      const client = createDWAClient({ baseUrl: "http://localhost:3000" });
+  rule("cancelTask", () => {
+    component("sends DELETE request to cancel task", {
+      given: ["mock fetch for cancel + refresh", () => {
+        withMockFetch();
+        mockFetch.mockResolvedValueOnce({ ok: true });
+        mockFetch.mockResolvedValueOnce({ ok: true, json: async () => [] });
+      }],
+      when: ["cancelling task", async () => {
+        const client = createDWAClient({ baseUrl: "http://localhost:3000" });
+        return client.cancelTask("task-123");
+      }],
+      then: ["returns true and sends DELETE", (result) => {
+        expect(result).toBe(true);
+        expect(mockFetch).toHaveBeenCalledWith(
+          "http://localhost:3000/api/tasks/task-123",
+          { method: "DELETE" },
+        );
+      }],
+      cleanup: cleanupFetch,
+    });
 
-      expect(client.selectedStepId).toBeNull();
-
-      client.selectStep("step-1");
-      expect(client.selectedStepId).toBe("step-1");
-
-      client.selectStep(null);
-      expect(client.selectedStepId).toBeNull();
+    component("returns false on cancel error", {
+      given: ["mock fetch that rejects", () => {
+        withMockFetch();
+        mockFetch.mockRejectedValueOnce(new Error("Cancel failed"));
+      }],
+      when: ["cancelling task", async () => {
+        const client = createDWAClient({ baseUrl: "http://localhost:3000" });
+        return client.cancelTask("task-123");
+      }],
+      then: ["returns false", (result) => {
+        expect(result).toBe(false);
+      }],
+      cleanup: cleanupFetch,
     });
   });
 
-  describe("subscribe", () => {
-    it("should notify listener on state changes", async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => [{ id: "task-1", status: "running" }],
-      });
-
-      const client = createDWAClient({ baseUrl: "http://localhost:3000" });
-      const listener = vi.fn();
-
-      const unsubscribe = client.subscribe(listener);
-
-      await client.fetchJobs();
-
-      // Listener should be called for loading state change and data arrival
-      expect(listener).toHaveBeenCalled();
-
-      unsubscribe();
+  rule("retryTask", () => {
+    component("sends POST request to retry task", {
+      given: ["mock fetch for retry + refresh", () => {
+        withMockFetch();
+        mockFetch.mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ taskId: "task-456" }),
+        });
+        mockFetch.mockResolvedValueOnce({ ok: true, json: async () => [] });
+      }],
+      when: ["retrying task", async () => {
+        const client = createDWAClient({ baseUrl: "http://localhost:3000" });
+        return client.retryTask("task-123");
+      }],
+      then: ["returns new task ID", (newTaskId) => {
+        expect(newTaskId).toBe("task-456");
+        expect(mockFetch).toHaveBeenCalledWith(
+          "http://localhost:3000/api/tasks/task-123/retry",
+          { method: "POST" },
+        );
+      }],
+      cleanup: cleanupFetch,
     });
 
-    it("should allow unsubscribe", async () => {
-      mockFetch.mockResolvedValue({
-        ok: true,
-        json: async () => [],
-      });
-
-      const client = createDWAClient({ baseUrl: "http://localhost:3000" });
-      const listener = vi.fn();
-
-      const unsubscribe = client.subscribe(listener);
-      unsubscribe();
-
-      await client.fetchJobs();
-
-      // After unsubscribe, listener should not be called for subsequent changes
-      // Note: It may have been called once during fetchJobs if it ran before unsubscribe completed
-      const callCount = listener.mock.calls.length;
-
-      await client.fetchJobs();
-
-      // No additional calls after unsubscribe
-      expect(listener.mock.calls.length).toBe(callCount);
+    component("returns null on retry error", {
+      given: ["mock fetch that rejects", () => {
+        withMockFetch();
+        mockFetch.mockRejectedValueOnce(new Error("Retry failed"));
+      }],
+      when: ["retrying task", async () => {
+        const client = createDWAClient({ baseUrl: "http://localhost:3000" });
+        return client.retryTask("task-123");
+      }],
+      then: ["returns null", (result) => {
+        expect(result).toBeNull();
+      }],
+      cleanup: cleanupFetch,
     });
   });
 
-  describe("polling", () => {
-    beforeEach(() => {
-      vi.useFakeTimers();
+  rule("selectStep", () => {
+    component("updates selected step ID", {
+      given: ["mock fetch", withMockFetch],
+      when: ["selecting and deselecting steps", () => {
+        const client = createDWAClient({ baseUrl: "http://localhost:3000" });
+        const initial = client.selectedStepId;
+        client.selectStep("step-1");
+        const selected = client.selectedStepId;
+        client.selectStep(null);
+        const cleared = client.selectedStepId;
+        return { initial, selected, cleared };
+      }],
+      then: ["step selection works", (result) => {
+        expect(result.initial).toBeNull();
+        expect(result.selected).toBe("step-1");
+        expect(result.cleared).toBeNull();
+      }],
+      cleanup: cleanupFetch,
+    });
+  });
+
+  rule("subscribe", () => {
+    component("notifies listener on state changes", {
+      given: ["mock fetch returning a job", () => {
+        withMockFetch();
+        mockFetch.mockResolvedValueOnce({
+          ok: true,
+          json: async () => [{ id: "task-1", status: "running" }],
+        });
+      }],
+      when: ["subscribing and fetching", async () => {
+        const client = createDWAClient({ baseUrl: "http://localhost:3000" });
+        const listener = vi.fn();
+        const unsubscribe = client.subscribe(listener);
+        await client.fetchJobs();
+        unsubscribe();
+        return listener;
+      }],
+      then: ["listener was called", (listener) => {
+        expect(listener).toHaveBeenCalled();
+      }],
+      cleanup: cleanupFetch,
     });
 
-    afterEach(() => {
-      vi.useRealTimers();
+    component("allows unsubscribe", {
+      given: ["mock fetch returning empty", () => {
+        withMockFetch();
+        mockFetch.mockResolvedValue({ ok: true, json: async () => [] });
+      }],
+      when: ["unsubscribing then fetching", async () => {
+        const client = createDWAClient({ baseUrl: "http://localhost:3000" });
+        const listener = vi.fn();
+        const unsubscribe = client.subscribe(listener);
+        unsubscribe();
+        await client.fetchJobs();
+        const callCount = listener.mock.calls.length;
+        await client.fetchJobs();
+        return { callCount, finalCount: listener.mock.calls.length };
+      }],
+      then: ["no additional calls after unsubscribe", (result) => {
+        expect(result.finalCount).toBe(result.callCount);
+      }],
+      cleanup: cleanupFetch,
+    });
+  });
+
+  rule("polling", () => {
+    component("starts polling with interval", {
+      given: ["fake timers and mock fetch", () => {
+        vi.useFakeTimers();
+        withMockFetch();
+        mockFetch.mockResolvedValue({ ok: true, json: async () => [] });
+      }],
+      when: ["starting polling and advancing time", async () => {
+        const client = createDWAClient({ baseUrl: "http://localhost:3000", pollInterval: 1000 });
+        client.startPolling();
+        const afterStart = mockFetch.mock.calls.length;
+        await vi.advanceTimersByTimeAsync(1000);
+        const afterFirst = mockFetch.mock.calls.length;
+        await vi.advanceTimersByTimeAsync(1000);
+        const afterSecond = mockFetch.mock.calls.length;
+        client.stopPolling();
+        return { afterStart, afterFirst, afterSecond };
+      }],
+      then: ["fetch called on each interval", (result) => {
+        expect(result.afterStart).toBe(1);
+        expect(result.afterFirst).toBe(2);
+        expect(result.afterSecond).toBe(3);
+      }],
+      cleanup: () => {
+        vi.useRealTimers();
+        cleanupFetch();
+      },
     });
 
-    it("should start polling with interval", async () => {
-      mockFetch.mockResolvedValue({
-        ok: true,
-        json: async () => [],
-      });
-
-      const client = createDWAClient({
-        baseUrl: "http://localhost:3000",
-        pollInterval: 1000,
-      });
-
-      client.startPolling();
-
-      // Initial fetch
-      expect(mockFetch).toHaveBeenCalledTimes(1);
-
-      // Advance time
-      await vi.advanceTimersByTimeAsync(1000);
-      expect(mockFetch).toHaveBeenCalledTimes(2);
-
-      await vi.advanceTimersByTimeAsync(1000);
-      expect(mockFetch).toHaveBeenCalledTimes(3);
-
-      client.stopPolling();
+    component("stops polling when stopPolling is called", {
+      given: ["fake timers and mock fetch", () => {
+        vi.useFakeTimers();
+        withMockFetch();
+        mockFetch.mockResolvedValue({ ok: true, json: async () => [] });
+      }],
+      when: ["starting and stopping polling", async () => {
+        const client = createDWAClient({ baseUrl: "http://localhost:3000", pollInterval: 1000 });
+        client.startPolling();
+        const afterStart = mockFetch.mock.calls.length;
+        client.stopPolling();
+        await vi.advanceTimersByTimeAsync(5000);
+        return { afterStart, afterAdvance: mockFetch.mock.calls.length };
+      }],
+      then: ["no additional calls after stop", (result) => {
+        expect(result.afterStart).toBe(1);
+        expect(result.afterAdvance).toBe(1);
+      }],
+      cleanup: () => {
+        vi.useRealTimers();
+        cleanupFetch();
+      },
     });
 
-    it("should stop polling when stopPolling is called", async () => {
-      mockFetch.mockResolvedValue({
-        ok: true,
-        json: async () => [],
-      });
-
-      const client = createDWAClient({
-        baseUrl: "http://localhost:3000",
-        pollInterval: 1000,
-      });
-
-      client.startPolling();
-      expect(mockFetch).toHaveBeenCalledTimes(1);
-
-      client.stopPolling();
-
-      await vi.advanceTimersByTimeAsync(5000);
-
-      // Should not have made additional calls after stopping
-      expect(mockFetch).toHaveBeenCalledTimes(1);
-    });
-
-    it("should not start polling twice", async () => {
-      mockFetch.mockResolvedValue({
-        ok: true,
-        json: async () => [],
-      });
-
-      const client = createDWAClient({
-        baseUrl: "http://localhost:3000",
-        pollInterval: 1000,
-      });
-
-      client.startPolling();
-      client.startPolling(); // Second call should be ignored
-
-      expect(mockFetch).toHaveBeenCalledTimes(1);
-
-      client.stopPolling();
+    component("does not start polling twice", {
+      given: ["fake timers and mock fetch", () => {
+        vi.useFakeTimers();
+        withMockFetch();
+        mockFetch.mockResolvedValue({ ok: true, json: async () => [] });
+      }],
+      when: ["calling startPolling twice", () => {
+        const client = createDWAClient({ baseUrl: "http://localhost:3000", pollInterval: 1000 });
+        client.startPolling();
+        client.startPolling();
+        const callCount = mockFetch.mock.calls.length;
+        client.stopPolling();
+        return callCount;
+      }],
+      then: ["only one initial fetch", (callCount) => {
+        expect(callCount).toBe(1);
+      }],
+      cleanup: () => {
+        vi.useRealTimers();
+        cleanupFetch();
+      },
     });
   });
 });

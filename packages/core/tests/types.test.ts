@@ -2,23 +2,24 @@
  * Unit tests for core types.
  */
 
-import { describe, it, expect } from "vitest";
+import { feature, rule, unit, expect } from "bdd-vitest";
 import type { Task, Effect, Backend, ResourceRequirements } from "../src/index.js";
 
-describe("Task type", () => {
-  it("should allow minimal task definition", () => {
-    const task: Task = {
+feature("Task type", () => {
+  unit("allows minimal task definition", {
+    given: ["a minimal task", () => ({
       type: "llm.chat",
       payload: { prompt: "Hello" },
-    };
-
-    expect(task.type).toBe("llm.chat");
-    expect(task.payload).toEqual({ prompt: "Hello" });
-    expect(task.backend).toBeUndefined();
+    }) satisfies Task],
+    then: ["has correct fields", (task) => {
+      expect(task.type).toBe("llm.chat");
+      expect(task.payload).toEqual({ prompt: "Hello" });
+      expect(task.backend).toBeUndefined();
+    }],
   });
 
-  it("should allow full task definition", () => {
-    const task: Task = {
+  unit("allows full task definition", {
+    given: ["a fully specified task", () => ({
       id: "task-123",
       type: "llm.chat",
       backend: "modal",
@@ -37,18 +38,19 @@ describe("Task type", () => {
       },
       onSuccess: [{ $event: "toast", text: "Done!" }],
       onError: [{ $event: "webhook", url: "https://example.com/error" }],
-    };
-
-    expect(task.id).toBe("task-123");
-    expect(task.backend).toBe("modal");
-    expect(task.queue).toBe("gpu");
-    expect(task.resources?.gpu).toBe("T4");
-    expect(task.retry?.attempts).toBe(3);
-    expect(task.onSuccess).toHaveLength(1);
+    }) satisfies Task],
+    then: ["has all fields populated", (task) => {
+      expect(task.id).toBe("task-123");
+      expect(task.backend).toBe("modal");
+      expect(task.queue).toBe("gpu");
+      expect(task.resources?.gpu).toBe("T4");
+      expect(task.retry?.attempts).toBe(3);
+      expect(task.onSuccess).toHaveLength(1);
+    }],
   });
 
-  it("should allow pipeline task with steps", () => {
-    const task: Task = {
+  unit("allows pipeline task with steps", {
+    given: ["a task with steps", () => ({
       type: "video-analysis",
       payload: { url: "https://example.com/video.mp4" },
       steps: [
@@ -56,99 +58,53 @@ describe("Task type", () => {
         { task: "audio.transcribe", input: { path: "{{steps.0.result}}" } },
         { task: "llm.summarize", input: { text: "{{steps.1.result}}" }, optional: true },
       ],
-    };
-
-    expect(task.steps).toHaveLength(3);
-    expect(task.steps![0].task).toBe("process.download");
-    expect(task.steps![2].optional).toBe(true);
+    }) satisfies Task],
+    then: ["has correct steps", (task) => {
+      expect(task.steps).toHaveLength(3);
+      expect(task.steps![0].task).toBe("process.download");
+      expect(task.steps![2].optional).toBe(true);
+    }],
   });
 });
 
-describe("Effect types", () => {
-  it("should allow toast effect", () => {
-    const effect: Effect = {
-      $event: "toast",
-      text: "Task completed!",
-      variant: "success",
-    };
-
-    expect(effect.$event).toBe("toast");
-  });
-
-  it("should allow webhook effect", () => {
-    const effect: Effect = {
-      $event: "webhook",
-      url: "https://example.com/hook",
-      method: "POST",
-      headers: { "X-Custom": "value" },
-    };
-
-    expect(effect.$event).toBe("webhook");
-  });
-
-  it("should allow notify effect", () => {
-    const effect: Effect = {
-      $event: "notify",
-      channel: "slack",
-      message: "Task completed",
-      target: "#general",
-    };
-
-    expect(effect.$event).toBe("notify");
-  });
-
-  it("should allow enqueue effect", () => {
-    const effect: Effect = {
-      $event: "enqueue",
-      task: {
-        type: "llm.summarize",
-        payload: { text: "{{result}}" },
-      },
-    };
-
-    expect(effect.$event).toBe("enqueue");
-  });
-
-  it("should allow invalidate effect", () => {
-    const effect: Effect = {
-      $event: "invalidate",
-      path: "/api/data",
-      tags: ["cache"],
-    };
-
-    expect(effect.$event).toBe("invalidate");
-  });
-
-  it("should allow emit effect", () => {
-    const effect: Effect = {
-      $event: "emit",
-      event: "custom-event",
-      data: { key: "value" },
-    };
-
-    expect(effect.$event).toBe("emit");
+feature("Effect types", () => {
+  unit.outline("allows effect type", [
+    { name: "toast", $event: "toast", extra: { text: "Task completed!", variant: "success" } },
+    { name: "webhook", $event: "webhook", extra: { url: "https://example.com/hook", method: "POST", headers: { "X-Custom": "value" } } },
+    { name: "notify", $event: "notify", extra: { channel: "slack", message: "Task completed", target: "#general" } },
+    { name: "enqueue", $event: "enqueue", extra: { task: { type: "llm.summarize", payload: { text: "{{result}}" } } } },
+    { name: "invalidate", $event: "invalidate", extra: { path: "/api/data", tags: ["cache"] } },
+    { name: "emit", $event: "emit", extra: { event: "custom-event", data: { key: "value" } } },
+  ], {
+    given: (row) => ({ $event: row.$event, ...row.extra }) as Effect,
+    when: (effect) => effect,
+    then: (effect, _, row) => {
+      expect(effect.$event).toBe(row.$event);
+    },
   });
 });
 
-describe("ResourceRequirements type", () => {
-  it("should allow GPU requirement as boolean", () => {
-    const resources: ResourceRequirements = {
+feature("ResourceRequirements type", () => {
+  unit("allows GPU requirement as boolean", {
+    given: ["boolean GPU resource", () => ({
       gpu: true,
       timeout: 300,
-    };
-
-    expect(resources.gpu).toBe(true);
+    }) satisfies ResourceRequirements],
+    then: ["gpu is boolean", (resources) => {
+      expect(resources.gpu).toBe(true);
+    }],
   });
 
-  it("should allow GPU requirement as string", () => {
-    const resources: ResourceRequirements = {
+  unit("allows GPU requirement as string", {
+    given: ["string GPU resource", () => ({
       gpu: "A100",
       vram: 40000,
       ram: 32000,
       cpu: 4,
-    };
-
-    expect(resources.gpu).toBe("A100");
-    expect(resources.vram).toBe(40000);
+    }) satisfies ResourceRequirements],
+    then: ["has specific GPU model", (resources) => {
+      expect(resources.gpu).toBe("A100");
+      expect(resources.vram).toBe(40000);
+    }],
   });
 });
